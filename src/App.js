@@ -17,6 +17,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import log from "./database/audit.log";
 
 var isSameOrBefore = require("dayjs/plugin/isSameOrBefore");
 dayjs.extend(isSameOrBefore);
@@ -253,8 +254,40 @@ class App extends Component {
     this.setState({ data: logs });
   };
 
+  readFile = () => {
+    var fs = require('fs')
+    , util = require('util')
+    , stream = require('stream')
+    , es = require('event-stream');
+
+var lineNr = 0;
+
+var s = fs.createReadStream('./database/audit.log')
+    .pipe(es.split())
+    .pipe(es.mapSync(function(line){
+
+        // pause the readstream
+        s.pause();
+
+        lineNr += 1;
+
+        console.log(line);
+       
+        // resume the readstream, possibly from a callback
+        s.resume();
+    })
+    .on('error', function(err){
+        console.log('Error while reading file.', err);
+    })
+    .on('end', function(){
+        console.log('Read entire file.')
+    })
+);
+  }
+
   componentDidMount = () => {
     this.setState({ data: logs });
+    this.readFile();
   };
 
   render() {
@@ -285,7 +318,7 @@ class App extends Component {
         </div>
 
         <BarChart
-          width={1000}
+          width={1500}
           height={600}
           data={barData}
           margin={{
