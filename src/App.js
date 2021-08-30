@@ -2,7 +2,8 @@ import "./App.scss";
 import React, { Component } from "react";
 import { Table, Button } from "antd";
 import { logs } from "./database/logs";
-import { tasks } from "./database/tasks";
+// import { tasks } from "./database/tasks";
+import { tasks } from "./database/auditlog";
 import { objects } from "./database/objectsTable";
 import "antd/dist/antd.css";
 import dayjs from "dayjs";
@@ -16,6 +17,7 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  LabelList,
 } from "recharts";
 import log from "./database/audit.log";
 
@@ -24,6 +26,39 @@ dayjs.extend(isSameOrBefore);
 
 var isSameOrAfter = require("dayjs/plugin/isSameOrAfter");
 dayjs.extend(isSameOrAfter);
+
+const renderCustomizedLabel = (props) => {
+  const { x, y, width, height, value, name } = props;
+  const radius = 12;
+
+  return (
+    <g>
+      <circle cx={x + width / 2} cy={y - radius} r={radius} fill="#76bed0" />
+      <text
+        x={x + width / 2}
+        y={y - radius}
+        fill="#fff"
+        textAnchor="middle"
+        dominantBaseline="middle"
+      >
+        {value}
+      </text>
+      <text
+        className="category-label"
+        x={x + width / 2}
+        y={y - 25}
+        fill="#000"
+        dominantBaseline="middle"
+        textAnchor="middle"
+        writingMode={"vertical-rtl"}
+      >
+        {name}
+      </text>
+    </g>
+  );
+};
+
+const colors = ["#f55d3e", "#f7cb15", "#76bed0"];
 
 const expandedRowRender = (row) => {
   const columns = [
@@ -163,6 +198,11 @@ const expandedRowRender = (row) => {
 class App extends Component {
   state = {
     data: [],
+    currentTask: {
+      taskName: "All tasks",
+      startTime: new Date(2021, 5, 21),
+      endTime: new Date(2021, 5, 23),
+    },
   };
 
   columns = [
@@ -170,12 +210,14 @@ class App extends Component {
       title: "Timestamp",
       key: "timestamp",
       dataIndex: "timestamp",
+
       render: (item, row) => <div>{dayjs(item).format("DD.MM., HH:mm")}</div>,
     },
     {
       title: "Execution Time",
       key: "executionTime",
       dataIndex: "executionTime",
+      sorter: (a, b) => a.executionTime - b.executionTime,
     },
     {
       title: "# of Results",
@@ -186,6 +228,7 @@ class App extends Component {
       title: "# of Advanced Filters",
       key: "nrOfAdvanced",
       dataIndex: "query",
+      sorter: (a, b) => a.query.advanced !== undefined && b.query.advanced !== undefined ? a.query.advanced.length - b.query.advanced.length : -1,
       render: (item, row) => (
         <div>{item.advanced !== undefined ? item.advanced.length : 0}</div>
       ),
@@ -241,85 +284,130 @@ class App extends Component {
   ];
 
   setRange = (task) => {
-    console.log(task);
     var dataNew = logs.filter(
       (item) =>
-        dayjs(item.timestamp).isSameOrAfter(dayjs(task.timeStart)) &&
-        dayjs(item.timestamp).isSameOrBefore(dayjs(task.timeEnd))
+        dayjs(item.timestamp).isSameOrAfter(dayjs(task.startTime)) &&
+        dayjs(item.timestamp).isSameOrBefore(dayjs(task.endTime))
     );
-    this.setState({ data: dataNew });
+    this.setState({
+      data: dataNew,
+      currentTask: task,
+    });
   };
 
   clearTask = () => {
-    this.setState({ data: logs });
+    this.setState({
+      data: this.getCompetitionLogs(),
+      currentTask: {
+        taskName: "All tasks",
+        startTime: new Date(2021, 5, 21),
+        endTime: new Date(2021, 5, 23),
+      },
+    });
   };
 
-  readFile = () => {
-    var fs = require('fs')
-    , util = require('util')
-    , stream = require('stream')
-    , es = require('event-stream');
-
-var lineNr = 0;
-
-var s = fs.createReadStream('./database/audit.log')
-    .pipe(es.split())
-    .pipe(es.mapSync(function(line){
-
-        // pause the readstream
-        s.pause();
-
-        lineNr += 1;
-
-        console.log(line);
-       
-        // resume the readstream, possibly from a callback
-        s.resume();
-    })
-    .on('error', function(err){
-        console.log('Error while reading file.', err);
-    })
-    .on('end', function(){
-        console.log('Read entire file.')
-    })
-);
-  }
+  getCompetitionLogs = () => {
+    return logs.filter(
+      (item) =>
+        (dayjs(item.timestamp).isSameOrAfter(
+          dayjs(new Date(2021, 5, 21, 13, 30))
+        ) &&
+          dayjs(item.timestamp).isSameOrBefore(
+            dayjs(new Date(2021, 5, 21, 17, 0))
+          )) ||
+        (dayjs(item.timestamp).isSameOrAfter(
+          dayjs(new Date(2021, 5, 23, 11, 30))
+        ) &&
+          dayjs(item.timestamp).isSameOrBefore(
+            dayjs(new Date(2021, 5, 23, 15, 0))
+          ))
+    );
+  };
 
   componentDidMount = () => {
-    this.setState({ data: logs });
-    this.readFile();
+    this.setState({ data: this.getCompetitionLogs() });
+    // console.log(dataNew.length);
   };
 
   render() {
-    let taskButtons = tasks.map((item, index) => (
-      <Button key={index} onClick={() => this.setRange(item)}>
-        Task {index}
+    let currentTask = this.state.currentTask;
+    let tasksCompetition = tasks.filter(
+      (item) =>
+        (dayjs(item.startTime).isSameOrAfter(
+          dayjs(new Date(2021, 5, 21, 13, 30))
+        ) &&
+          dayjs(item.startTime).isSameOrBefore(
+            dayjs(new Date(2021, 5, 23, 17, 0))
+          )) ||
+        (dayjs(item.startTime).isSameOrAfter(
+          dayjs(new Date(2021, 5, 21, 11, 30))
+        ) &&
+          dayjs(item.startTime).isSameOrBefore(
+            dayjs(new Date(2021, 5, 23, 15, 0))
+          ))
+    );
+
+    let taskButtons = tasksCompetition.map((item, index) =>  (
+      <Button
+        key={index}
+        onClick={() => this.setRange(item)}
+        type={item.taskName === currentTask.taskName ? "primary" : ""}
+      >
+        Task {index} - {item.taskName}, {dayjs(item.startTime).format("DD.MM, HH:mm")} -{" "}
+        {dayjs(item.endTime).format("HH:mm")}
       </Button>
     ));
+
+    console.log(taskButtons.filter(item => item));
+
+    let totalExecutionTime = this.state.data.reduce(
+      (a, b) => a + b.executionTime,
+      0
+    );
+    let averageExecutionTime = totalExecutionTime / this.state.data.length;
+
+    let frameColor = this.state.data.filter(item => item.query.frame.hasColor);
+    let frameCount = this.state.data.filter(item => item.query.frame.hasAmount);
+console.log("color; " + frameColor.length);
+console.log("count " + frameCount.length);
 
     let advanceds = this.state.data.map((item) => item.query.advanced);
     advanceds = [].concat.apply([], advanceds);
 
     let barData = [];
 
-    objects.forEach(element => {
-        let count = advanceds.filter(item => item !== undefined && item.objectId === element._id).length;
-        barData.push({name: element.name, count: count});
+    console.log(this.state.data);
+    objects.forEach((element) => {
+      let count = advanceds.filter(
+        (item) => item !== undefined && item.objectId === element._id
+      ).length;
+
+      // console.log(element.name + ": " + count);
+      // console.log(element._id);
+      barData.push({ name: element.name, count: count });
     });
 
-    // let bars = objects.map((item) => <Bar dataKey={item._id} fill="#8884d8" />);
-    console.log(advanceds);
+    barData.push({});
+
+    console.log(barData.sort((a, b) => (a.count < b.count ? 1 : -1)));
+
+    // console.log(barData.filter(item => item.count === 0).length);
 
     return (
       <div className="App">
         <div>
-          <Button onClick={this.clearTask}>All</Button>
+          <Button
+            onClick={this.clearTask}
+            type={currentTask.taskName === "All tasks" ? "primary" : ""}
+          >
+            All
+          </Button>
           {taskButtons}
         </div>
 
         <BarChart
-          width={1500}
-          height={600}
+          width={1700}
+          height={800}
           data={barData}
           margin={{
             top: 5,
@@ -333,9 +421,21 @@ var s = fs.createReadStream('./database/audit.log')
           <YAxis />
           <Tooltip />
           <Legend />
-          <Bar dataKey={"count"} fill="#8884d8" />
+          <Bar dataKey={"count"} fill="#76bed0" width={30}>
+            {/* <LabelList dataKey="count" content={renderCustomizedLabel} /> */}
+            {/* {barData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+            ))} */}
+          </Bar>
         </BarChart>
 
+        <h2>
+          {currentTask.taskName +
+            " " +
+            dayjs(currentTask.startTime).format("DD.MM HH:mm") +
+            " - " +
+            dayjs(currentTask.endTime).format("DD.MM. HH:mm")}
+        </h2>
         <Table
           rowKey="_id"
           dataSource={this.state.data}

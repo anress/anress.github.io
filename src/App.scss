@@ -1,13 +1,14 @@
-
-
 $gray: #ccc;
 
-$red: #F55D3E;
-$yellow: #F7CB15;
-$blue: #76BED0;
+$red: #f55d3e;
+$yellow: #f7cb15;
+$blue: #76bed0;
 
 $icon-size: 40px;
 
+body, text {
+  font-family: 'Times New Roman', Times, serif;
+}
 
 .object-icon {
   height: $icon-size;
@@ -26,6 +27,21 @@ $icon-size: 40px;
 
 .anticon.anticon-close {
   color: rgba($red, 0.5);
+}
+
+.recharts-default-legend {
+  .recharts-legend-item.legend-item-0 {
+    transform: translateY(20px);
+  }
+}
+
+.category-label {
+  writing-mode: sideways-lr;
+  // transform: rotate(
+  //   -10deg
+  //   );
+    // translateX(-720px) translateY(-530px);
+        text-anchor: end;
 }
 
 @import "./Styles/Tooltip.scss";
