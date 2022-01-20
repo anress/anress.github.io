@@ -374,6 +374,16 @@ console.log("count " + frameCount.length);
     let advanceds = this.state.data.map((item) => item.query.advanced);
     advanceds = [].concat.apply([], advanceds);
 
+    console.log(advanceds);
+    console.log(advanceds.filter(item => item && item.hasColor).length);
+
+    console.log(advanceds.filter(item => item && item.hasAmount).length);
+
+    console.log(advanceds.filter(item => item && item.hasPosition).length);    
+    console.log(advanceds.filter(item => item && item.hasConfidence).length);
+    console.log(advanceds.filter(item => item && item.hasSize).length);
+    console.log(advanceds.filter(item => item && item.isTemporalQuery).length);
+
     let barData = [];
 
     console.log(this.state.data);
